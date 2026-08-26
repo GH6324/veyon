@@ -23,6 +23,7 @@
 
 #include "LockWidget.h"
 #include "PlatformCoreFunctions.h"
+#include "PlatformInputDeviceFunctions.h"
 
 #include <QApplication>
 #include <QPainter>
@@ -53,6 +54,7 @@ LockWidget::LockWidget( Mode mode, const QPixmap& background, QWidget* parent ) 
 	}
 
 	VeyonCore::platform().coreFunctions().setSystemUiState( false );
+	VeyonCore::platform().inputDeviceFunctions().disableInputDevices();
 
 	setWindowTitle( {} );
 
@@ -85,6 +87,7 @@ LockWidget::LockWidget( Mode mode, const QPixmap& background, QWidget* parent ) 
 
 LockWidget::~LockWidget()
 {
+	VeyonCore::platform().inputDeviceFunctions().enableInputDevices();
 	VeyonCore::platform().coreFunctions().setSystemUiState( true );
 
 	QGuiApplication::restoreOverrideCursor();
