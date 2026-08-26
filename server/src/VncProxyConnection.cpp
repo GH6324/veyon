@@ -54,6 +54,7 @@ VncProxyConnection::VncProxyConnection( QTcpSocket* clientSocket,
 
 	connect( m_proxyClientSocket, &QTcpSocket::readyRead, this, &VncProxyConnection::readFromClient );
 	connect( m_vncServerSocket, &QTcpSocket::readyRead, this, &VncProxyConnection::readFromServer );
+	connect(&m_clientSyncTimer, &QTimer::timeout, this, &VncProxyConnection::synchronizeClientStream);
 	connect( &m_clientRetryTimer, &QTimer::timeout, this, &VncProxyConnection::readFromClient );
 	connect( &m_serverRetryTimer, &QTimer::timeout, this, &VncProxyConnection::readFromServer );
 	connect( &m_handshakeTimer, &QTimer::timeout, this, [this]() {
@@ -151,9 +152,8 @@ void VncProxyConnection::readFromServer()
 	}
 	else if( serverProtocol().state() == VncServerProtocol::State::Running )
 	{
-		while( receiveServerMessage() )
+		while (synchronizeClientStream() && receiveServerMessage())
 		{
-			Q_EMIT serverMessageProcessed();
 		}
 	}
 	else
@@ -197,6 +197,22 @@ bool VncProxyConnection::flushPendingToSocket(QTcpSocket* target, QByteArray& pe
 	}
 
 	return pending.isEmpty();
+}
+
+
+
+bool VncProxyConnection::synchronizeClientStream()
+{
+	if (serverProtocol().state() == VncServerProtocol::State::Running &&
+		clientProtocol().state() == VncClientProtocol::Running &&
+		flushPendingToSocket(m_proxyClientSocket, m_pendingClientData))
+	{
+		Q_EMIT clientStreamSynchronized();
+
+		return true;
+	}
+
+	return false;
 }
 
 
@@ -334,11 +350,6 @@ bool VncProxyConnection::receiveClientMessage()
 
 bool VncProxyConnection::receiveServerMessage()
 {
-	if (!flushPendingToSocket(m_proxyClientSocket, m_pendingClientData))
-	{
-		return false;
-	}
-
 	if( clientProtocol().receiveMessage() )
 	{
 		const auto& message = clientProtocol().lastMessage();
@@ -373,10 +384,6 @@ void VncProxyConnection::updateHandshakeState()
 	{
 		m_handshakeTimer.stop();
 
-		if (m_connectionEstablishedEmitted == false)
-		{
-			m_connectionEstablishedEmitted = true;
-			Q_EMIT connectionEstablished();
-		}
+		m_clientSyncTimer.start(ClientSyncInterval);
 	}
 }

@@ -61,9 +61,7 @@ ComputerControlServer::ComputerControlServer( QObject* parent ) :
 	connect( &m_serverAccessControlManager, &ServerAccessControlManager::finished,
 			 this, &ComputerControlServer::showAccessControlMessage );
 
-	connect(&m_vncProxyServer, &VncProxyServer::serverMessageProcessed,
-			 this, &ComputerControlServer::sendAsyncFeatureMessages, Qt::DirectConnection);
-	connect(&m_vncProxyServer, &VncProxyServer::connectionEstablished,
+	connect(&m_vncProxyServer, &VncProxyServer::connectionSynchronized,
 			 this, &ComputerControlServer::sendAsyncFeatureMessages, Qt::DirectConnection);
 	connect( &m_vncProxyServer, &VncProxyServer::connectionClosed, this, &ComputerControlServer::updateTrayIconToolTip );
 }
